@@ -57,5 +57,28 @@
 2. Clone or download this repository
 3. Navigate to the game folder and run:
 
-```bash
 python main.py
+
+### 🛠 Roadmap
+Planned future updates:
+
+###Offline progression
+
+###Pets or companions
+
+###Dungeon bosses and visual effects
+
+###Prestige or rebirth system
+
+###Background music and sound effects
+
+##🧑‍💻 Credits
+Developed by [IcyGoneSouth]
+Initial concept, programming, UI design, and game logic.
+
+##🔖 License
+This project is released under the MIT License. Feel free to fork and expand it.
+
+---
+
+`v0.1.0 Demo`
