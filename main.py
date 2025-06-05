@@ -47,6 +47,21 @@ LOOT_TABLE = [
     {"id": "ethereal_guard", "name": "Ethereal Guard", "rarity": "Legendary", "def": 16, "type": "armor", "desc": "Shifts with the wind."},
 ]
 
+def roll_loot_by_rarity():
+    roll = random.random()
+    if roll < 0.50:
+        rarity = "Common"
+    elif roll < 0.75:
+        rarity = "Uncommon"
+    elif roll < 0.90:
+        rarity = "Rare"
+    elif roll < 0.98:
+        rarity = "Epic"
+    else:
+        rarity = "Legendary"
+    candidates = [item for item in LOOT_TABLE if item["rarity"] == rarity]
+    return random.choice(candidates) if candidates else random.choice(LOOT_TABLE)
+
 
 # Tooltip class
 class ToolTip:
@@ -93,6 +108,10 @@ class Game:
         self.shop_rotation = []
         self.last_shop_refresh = time.time()  # Import time module at top
         self.refresh_shop_items()
+        self.auto_loot_enabled = False
+        self.auto_loot_cost = 15
+        self.root.after(5000, self.auto_loot_tick)  # Auto-loot loop
+
 
 
 
@@ -108,13 +127,19 @@ class Game:
         self.potion_label.pack()
         self.equipped_label = Label(self.root, text="")
         self.equipped_label.pack()
+        self.auto_loot_button = Button(self.root, text="Enable Auto-Loot", state=DISABLED, command=self.toggle_auto_loot)
+        self.auto_loot_button.pack()
+
 
         OptionMenu(self.root, self.selected_tier, *TIER_DATA.keys()).pack()
 
         Button(self.root, text="Roll Loot", command=self.roll_loot).pack()
+        
         self.inventory_list = Listbox(self.root, width=50)
         self.inventory_list.pack()
         Button(self.root, text="Equip Selected", command=self.equip_selected).pack()
+        Button(self.root, text="Sell Selected", command=self.sell_selected).pack()
+        Button(self.root, text="Bulk Sell", command=self.open_bulk_sell_menu).pack()
         Button(self.root, text="Use Potion", command=self.use_potion).pack()
         Button(self.root, text="Enter Dungeon", command=self.start_dungeon).pack()
         Button(self.root, text="Shop", command=self.open_shop).pack()
@@ -141,6 +166,12 @@ class Game:
             self.inventory_list.insert(index, display)
             self.inventory_list.itemconfig(index, {'fg': RARITY_COLORS[item["rarity"]]})
         self.bind_tooltips()
+
+        if self.level >= 10:
+            self.auto_loot_button.config(state=NORMAL, text="Disable Auto-Loot" if self.auto_loot_enabled else "Enable Auto-Loot")
+        else:
+            self.auto_loot_button.config(state=DISABLED)
+
 
     def bind_tooltips(self):
         def on_motion(event):
@@ -171,6 +202,26 @@ class Game:
         self.update_ui()
         self.save_game()
 
+    def toggle_auto_loot(self):
+        self.auto_loot_enabled = not self.auto_loot_enabled
+        state = "enabled" if self.auto_loot_enabled else "disabled"
+        self.log.config(text=f"Auto-Loot {state}.")
+        self.update_ui()
+
+    def auto_loot_tick(self):
+        if self.auto_loot_enabled and self.level >= 10:
+            if self.coins >= self.auto_loot_cost:
+                self.coins -= self.auto_loot_cost
+                item = roll_loot_by_rarity()
+                self.inventory.append(item)
+                self.collection_log.add(item["id"])
+                self.log.config(text=f"Auto-looted: {item['name']}")
+            else:
+                self.auto_loot_enabled = False
+                self.log.config(text="Auto-Loot disabled (not enough coins).")
+        self.update_ui()
+        self.root.after(5000, self.auto_loot_tick)  # Repeat every 5s
+
     def roll_loot(self):
         if not self.first_roll_used:
             cost = 0
@@ -193,11 +244,11 @@ class Game:
 
         def spin(index=0):
             if index < 20:
-                item = random.choice(LOOT_TABLE)
+                item = roll_loot_by_rarity()
                 spin_label.config(text=item["name"], fg=RARITY_COLORS[item["rarity"]])
                 spin_win.after(100, lambda: spin(index + 1))
             else:
-                item = random.choice(LOOT_TABLE)
+                item = roll_loot_by_rarity()
                 self.inventory.append(item)
                 self.collection_log.add(item["id"])
                 spin_label.config(text=f"🎉 {item['name']}!", fg=RARITY_COLORS[item["rarity"]])
@@ -207,6 +258,76 @@ class Game:
                 spin_win.after(1000, spin_win.destroy)
 
         spin()
+
+    def sell_selected(self):
+        selected = self.inventory_list.curselection()
+        if not selected:
+            return
+        item = self.inventory[selected[0]]
+        rarity = item["rarity"]
+        coin_value = {
+            "Common": 5,
+            "Uncommon": 10,
+            "Rare": 20,
+            "Epic": 50,
+            "Legendary": 100
+        }.get(rarity, 0)
+
+        self.coins += coin_value
+        self.inventory.pop(selected[0])
+        self.log.config(text=f"Sold {item['name']} for {coin_value} coins.")
+        self.update_ui()
+        self.save_game()
+
+    def open_bulk_sell_menu(self):
+        win = Toplevel(self.root)
+        win.title("Bulk Sell")
+
+        Label(win, text="Sell All Items By Rarity").pack(pady=5)
+
+        for rarity in RARITY_ORDER:
+            Button(
+                win,
+                text=f"Sell All {rarity} Items",
+                fg=RARITY_COLORS[rarity],
+                command=lambda r=rarity: self.bulk_sell(r, win)
+            ).pack(padx=10, pady=2)
+
+    def bulk_sell(self, rarity, window):
+        coin_value = {
+            "Common": 5,
+            "Uncommon": 10,
+            "Rare": 20,
+            "Epic": 50,
+            "Legendary": 100
+        }.get(rarity, 0)
+
+        items_to_sell = [item for item in self.inventory if item["rarity"] == rarity]
+        count = len(items_to_sell)
+        total_value = coin_value * count
+
+        if count == 0:
+            self.log.config(text=f"No {rarity} items to sell.")
+            window.destroy()
+            return
+
+        # Confirm preview
+        confirm = Toplevel(self.root)
+        confirm.title("Confirm Bulk Sell")
+
+        Label(confirm, text=f"Sell all {count} {rarity} items for {total_value} coins?").pack(padx=10, pady=10)
+
+        def confirm_sell():
+            self.inventory = [item for item in self.inventory if item["rarity"] != rarity]
+            self.coins += total_value
+            self.log.config(text=f"Sold {count} {rarity} items for {total_value} coins.")
+            self.update_ui()
+            self.save_game()
+            confirm.destroy()
+            window.destroy()
+
+        Button(confirm, text="Confirm", command=confirm_sell).pack(side=LEFT, padx=20, pady=10)
+        Button(confirm, text="Cancel", command=confirm.destroy).pack(side=RIGHT, padx=20, pady=10)
 
 
 
@@ -221,52 +342,67 @@ class Game:
         self.save_game()
 
     def start_dungeon(self):
-        tier = self.selected_tier.get()
-        data = TIER_DATA[tier]
-        
-        if self.level < data["min_level"]:
-            self.log.config(text=f"❌ Requires level {data['min_level']} to enter {tier}!")
-            return
         if not self.equipped_weapon:
-            self.log.config(text="⚠️ Equip a weapon first!")
+            self.log.config(text="Equip a weapon first!")
             return
 
         atk = self.equipped_weapon.get("atk", 0)
         defense = self.equipped_armor.get("def", 0) if self.equipped_armor else 0
-        enemy_hp = random.randint(*data["hp"])
-        enemy_name = data["enemy"]
-        combat_log = f"⚔️ You entered {tier} vs a {enemy_name}!\n"
+
+        # Phase 1 - Regular enemies
+        enemy_hp = 20 + self.level * 2
+        self.log.config(text="Entering dungeon... Phase 1: Clearing mobs!")
+        self.root.update()
 
         while enemy_hp > 0 and self.hp > 0:
             enemy_hp -= atk
-            dmg = max(0, random.randint(*data["dmg"]) - defense)
+            dmg = max(0, random.randint(5, 15) - defense)
             self.hp -= dmg
-            combat_log += f"You hit for {atk}, enemy has {max(enemy_hp, 0)} HP.\n"
-            combat_log += f"The {enemy_name} hit you for {dmg}. You have {max(self.hp, 0)} HP.\n"
 
         if self.hp <= 0:
             self.hp = self.max_hp
-            combat_log += "💀 You failed the dungeon!"
-        else:
-            num_loot = random.randint(1, tier.count("Tier"))
-            drops = random.sample(LOOT_TABLE, min(num_loot, len(LOOT_TABLE)))
-            for item in drops:
-                self.inventory.append(item)
-                self.collection_log.add(item["id"])
-            self.coins += data["coins"]
-            self.xp += data["xp"]
-            combat_log += f"🏆 Victory! +{data['coins']} coins, +{data['xp']} XP.\n"
-            combat_log += "Looted: " + ", ".join(i['name'] for i in drops)
+            self.log.config(text="You were defeated by the dungeon mobs!")
+            self.update_ui()
+            self.save_game()
+            return
 
-            if self.xp >= self.xp_to_next:
-                self.xp -= self.xp_to_next
-                self.level += 1
-                self.xp_to_next = int(self.xp_to_next * 1.5)
-                combat_log += f"\n⬆️ Leveled up! Now level {self.level}"
+        # Phase 2 - Boss Battle
+        boss_hp = 40 + self.level * 3
+        self.log.config(text="Phase 2: Boss Battle!")
+        self.root.update()
+        boss_name = random.choice(["Gravelord Xarn", "The Hollow Titan", "Crimson Wraith"])
+        self.log.config(text=f"Boss Encountered: {boss_name}!")
+        self.root.update()
 
-        self.log.config(text=combat_log)
+        while boss_hp > 0 and self.hp > 0:
+            boss_hp -= atk
+            dmg = max(0, random.randint(10, 25) - defense)
+            self.hp -= dmg
+
+        if self.hp <= 0:
+            self.hp = self.max_hp
+            self.log.config(text=f"You were slain by {boss_name}!")
+            self.update_ui()
+            self.save_game()
+            return
+
+        # Victory rewards
+        loot = roll_loot_by_rarity()
+        bonus_loot = roll_loot_by_rarity()
+        self.inventory.extend([loot, bonus_loot])
+        self.collection_log.update([loot["id"], bonus_loot["id"]])
+        self.coins += 10
+        self.xp += 8
+
+        self.log.config(text=f"Victory! Defeated {boss_name}.\nLooted: {loot['name']} and {bonus_loot['name']} (+20 coins, +15 XP)")
+        if self.xp >= self.xp_to_next:
+            self.xp -= self.xp_to_next
+            self.level += 1
+            self.xp_to_next = int(self.xp_to_next * 2.0)
+
         self.update_ui()
         self.save_game()
+
 
 
     def refresh_shop_items(self):
