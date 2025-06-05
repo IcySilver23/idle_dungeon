@@ -1,6 +1,7 @@
 from tkinter import *
 import random, json, os
 import time
+from tkinter import ttk
 
 # Constants
 RARITY_ORDER = ["Common", "Uncommon", "Rare", "Epic", "Legendary"]
@@ -83,6 +84,28 @@ class ToolTip:
         if self.tip_window:
             self.tip_window.destroy()
             self.tip_window = None
+
+
+def show_splash(root):
+    splash = Toplevel()
+    splash.overrideredirect(True)
+    splash.geometry("500x300+500+300")
+    splash.configure(bg="black")
+
+    Label(splash, text="Idle Dungeon", fg="white", bg="black", font=("Helvetica", 22, "bold")).pack(pady=40)
+    bar = ttk.Progressbar(splash, length=300, mode='determinate')
+    bar.pack(pady=20)
+
+    def update_bar(value=0):
+        if value < 100:
+            bar['value'] = value
+            root.after(25, lambda: update_bar(value + 5))
+        else:
+            splash.destroy()
+            root.deiconify()
+            Game(root)
+
+    update_bar()
 
 class Game:
     def __init__(self, root):
@@ -520,5 +543,7 @@ class Game:
 
 if __name__ == "__main__":
     root = Tk()
-    game = Game(root)
+    root.withdraw()
+    show_splash(root)
+    root.mainloop()
     root.mainloop()
