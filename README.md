@@ -62,21 +62,23 @@ python main.py
 ## 🛠 Roadmap
 Planned future updates:
 
-###Offline progression
+- Offline progression
 
-###Pets or companions
+- Pets or companions
 
-###Dungeon bosses and visual effects
+- Dungeon bosses and visual effects
 
-###Prestige or rebirth system
+- Prestige or rebirth system
 
-###Background music and sound effects
+- Background music and sound effects
 
-##🧑‍💻 Credits
+---
+
+🧑‍💻 Credits
 Developed by [IcyGoneSouth]
 Initial concept, programming, UI design, and game logic.
 
-##🔖 License
+🔖 License
 This project is released under the MIT License. Feel free to fork and expand it.
 
 ---
