@@ -1,86 +1,58 @@
-# 🏰 Idle Dungeon
+# Idle Dungeon - Demo v1
 
-**Idle Dungeon** is a desktop clicker RPG where players roll for loot, equip powerful gear, and battle through tiered dungeons for increasingly better rewards. This is the first public demo release.
-
----
-
-## 📦 Features
-
-### ⚔️ Core Gameplay
-- Roll loot to collect weapons and armor (first roll is free)
-- Equip items to increase ATK/DEF stats
-- Enter dungeons to fight enemies and earn XP, coins, and more loot
-- Failing a dungeon resets HP, while victory rewards progression
-
-### 🎒 Inventory & Equipment
-- Inventory shows item rarity, stats, and icons (🗡/🛡)
-- Tooltip popups with item descriptions and details
-- Equipment slots show your currently equipped weapon and armor
-
-### 🎲 Loot System
-- Extensive loot table with rarity tiers: Common → Legendary
-- Each item has stats, type, and description
-- Animated loot spin when rolling to simulate a slot machine
-
-### 🏹 Dungeons
-- Multiple dungeon tiers with level requirements
-- Enemy HP and damage scale with tier
-- Rewards increase with each dungeon level
-
-### 📘 Collection Log
-- Tracks all possible loot items
-- Locked items are blacked out
-- Unlocked items show name, description, and rarity
-- Displays collection progress as a percentage
-
-### 🧠 Progression
-- Leveling system based on dungeon XP
-- Scaled XP requirement per level
-- Coins are used for loot rolls and vendor purchases
-- Potion system allows healing between dungeon runs
-
-### 🛍️ Vendor Shop (Grimrick the Greedy)
-- NPC shop with rotating limited-time items
-- Shop refreshes every 5 minutes or manually
-- Items include potions, XP boosts, and auto-loot upgrades
-- Grimrick delivers sarcastic and greedy flavor dialogue
-
-### 💾 Save System
-- Auto-saves game progress to a local JSON file
-- Fully restores inventory, equipment, stats, and shop state on launch
+Idle Dungeon is a pixel-style idle RPG where you collect powerful gear, conquer tiered dungeons, and build your loadout through loot rolls and strategic upgrades.
 
 ---
 
-## 📂 Installation & Running
+## 🗂️ How to Play
 
-1. Make sure you have **Python 3.10+** installed
-2. Clone or download this repository
-3. Navigate to the game folder and run:
-
-python main.py
-
-## 🛠 Roadmap
-Planned future updates:
-
-- Offline progression
-
-- Pets or companions
-
-- Dungeon bosses and visual effects
-
-- Prestige or rebirth system
-
-- Background music and sound effects
+1. **Clone or download this repository and navigate to dist/IdleDungeon.exe**
+2. **Double-click to start**
+3. A splash screen will appear with a loading bar
+4. Play the game — no setup required!
 
 ---
 
-🧑‍💻 Credits
-Developed by [IcyGoneSouth]
-Initial concept, programming, UI design, and game logic.
+## 🧩 Features
 
-🔖 License
-This project is released under the MIT License. Feel free to fork and expand it.
+- 🎮 **Gameplay**
+  - Loot roll system with rarity tiers (Common ➜ Legendary)
+  - Dungeon runs with two phases: mobs ➜ boss
+  - Gear with unique stats (ATK, DEF), tooltips, and color-coded rarity
+  - Equip weapons and armor directly from inventory
+  - Auto-Loot unlocks at level 10 and works while idle
+
+- 📈 **Progression**
+  - XP and level system
+  - Tiered dungeons with scaling rewards and level requirements
+  - Sell or bulk sell loot for coins
+
+- 💰 **Economy**
+  - Use coins to buy rotating items from the NPC Vendor
+  - Shop refreshes every 5 minutes
+  - Preview all loot in a sorted Collection Log with unlock tracking
+
+- 🌟 **Visuals & Quality of Life**
+  - Splash screen with animated loading bar
+  - Pixel-style icon and colorful UI feedback
+  - Clean EXE packaging — just run and play
+  - Saves your progress automatically
 
 ---
 
-`v0.1.0 Demo`
+## 📁 Save Data
+Progress is saved in a file at:
+game_data/save.json
+You can delete this file to reset your progress.
+
+---
+
+## 🧪 Coming Soon
+- Relic system (passive buffs)
+- Dungeon modifiers
+- Achievements and unlockable titles
+- More dungeon tiers and gear types
+
+---
+
+Made with Python & ❤️ for demo release.
