@@ -63,6 +63,21 @@ def roll_loot_by_rarity():
     candidates = [item for item in LOOT_TABLE if item["rarity"] == rarity]
     return random.choice(candidates) if candidates else random.choice(LOOT_TABLE)
 
+def roll_loot_by_rarity_with_luck(luck_bonus=0):
+    roll = random.random() + (luck_bonus * 0.01)
+    if roll < 0.50:
+        rarity = "Common"
+    elif roll < 0.75:
+        rarity = "Uncommon"
+    elif roll < 0.90:
+        rarity = "Rare"
+    elif roll < 0.98:
+        rarity = "Epic"
+    else:
+        rarity = "Legendary"
+    candidates = [item for item in LOOT_TABLE if item["rarity"] == rarity]
+    return random.choice(candidates) if candidates else random.choice(LOOT_TABLE)
+
 
 # Tooltip class
 class ToolTip:
@@ -134,6 +149,9 @@ class Game:
         self.auto_loot_enabled = False
         self.auto_loot_cost = 15
         self.root.after(5000, self.auto_loot_tick)  # Auto-loot loop
+        self.stat_points = 0
+        self.stats = {"Strength": 0, "Defense": 0, "Luck": 0}
+
 
 
 
@@ -150,6 +168,7 @@ class Game:
         self.potion_label.pack()
         self.equipped_label = Label(self.root, text="")
         self.equipped_label.pack()
+        Button(self.root, text="Stats", command=self.open_stats_menu).pack()
         self.auto_loot_button = Button(self.root, text="Enable Auto-Loot", state=DISABLED, command=self.toggle_auto_loot)
         self.auto_loot_button.pack()
 
@@ -164,6 +183,8 @@ class Game:
         Button(self.root, text="Sell Selected", command=self.sell_selected).pack()
         Button(self.root, text="Bulk Sell", command=self.open_bulk_sell_menu).pack()
         Button(self.root, text="Use Potion", command=self.use_potion).pack()
+        self.dungeon_preview_label = Label(self.root, text="🧭 Hover here to preview dungeon info", fg="blue", cursor="question_arrow")
+        self.dungeon_preview_label.pack()
         Button(self.root, text="Enter Dungeon", command=self.start_dungeon).pack()
         Button(self.root, text="Shop", command=self.open_shop).pack()
         Button(self.root, text="Collection Log", command=self.show_collection).pack()
@@ -206,12 +227,49 @@ class Game:
                 self.tooltip.show(text, event.x_root, event.y_root)
             else:
                 self.tooltip.hide()
+        def show_dungeon_preview(event):
+            tier = self.selected_tier.get()
+            data = TIER_DATA[tier]
+            text = (
+                f"{tier} - {data['enemy']}\n"
+                f"HP: {data['hp'][0]}–{data['hp'][1]}\n"
+                f"DMG: {data['dmg'][0]}–{data['dmg'][1]}\n"
+                f"XP: {data['xp']} | Coins: {data['coins']}\n"
+                f"Min Level: {data['min_level']}\n"
+                f"Loot: Mostly Common → Rare"
+            )
+            self.tooltip.show(text, event.x_root, event.y_root)
+
+        self.dungeon_preview_label.bind("<Enter>", show_dungeon_preview)
+        self.dungeon_preview_label.bind("<Leave>", self.tooltip.hide)
+
 
         def on_leave(event):
             self.tooltip.hide()
 
         self.inventory_list.bind("<Motion>", on_motion)
         self.inventory_list.bind("<Leave>", on_leave)
+
+
+    def open_stats_menu(self):
+        win = Toplevel(self.root)
+        win.title("Allocate Stat Points")
+        Label(win, text=f"Unassigned Points: {self.stat_points}").pack()
+
+        for stat in ["Strength", "Defense", "Luck"]:
+            frame = Frame(win)
+            frame.pack()
+            Label(frame, text=f"{stat}: {self.stats[stat]}").pack(side=LEFT)
+            Button(frame, text="+", command=lambda s=stat: self.increase_stat(s, win)).pack(side=RIGHT)
+
+    def increase_stat(self, stat, window):
+        if self.stat_points > 0:
+            self.stats[stat] += 1
+            self.stat_points -= 1
+            self.update_ui()
+            window.destroy()
+            self.open_stats_menu()
+
 
     def equip_selected(self):
         selected = self.inventory_list.curselection()
@@ -235,7 +293,7 @@ class Game:
         if self.auto_loot_enabled and self.level >= 10:
             if self.coins >= self.auto_loot_cost:
                 self.coins -= self.auto_loot_cost
-                item = roll_loot_by_rarity()
+                item = roll_loot_by_rarity_with_luck(self.stats["Luck"])
                 self.inventory.append(item)
                 self.collection_log.add(item["id"])
                 self.log.config(text=f"Auto-looted: {item['name']}")
@@ -267,11 +325,11 @@ class Game:
 
         def spin(index=0):
             if index < 20:
-                item = roll_loot_by_rarity()
+                item = roll_loot_by_rarity_with_luck(self.stats["Luck"])
                 spin_label.config(text=item["name"], fg=RARITY_COLORS[item["rarity"]])
                 spin_win.after(100, lambda: spin(index + 1))
             else:
-                item = roll_loot_by_rarity()
+                item = roll_loot_by_rarity_with_luck(self.stats["Luck"])
                 self.inventory.append(item)
                 self.collection_log.add(item["id"])
                 spin_label.config(text=f"🎉 {item['name']}!", fg=RARITY_COLORS[item["rarity"]])
@@ -369,8 +427,9 @@ class Game:
             self.log.config(text="Equip a weapon first!")
             return
 
-        atk = self.equipped_weapon.get("atk", 0)
-        defense = self.equipped_armor.get("def", 0) if self.equipped_armor else 0
+        atk = self.equipped_weapon.get("atk", 0) + self.stats.get("Strength", 0)
+        defense = (self.equipped_armor.get("def", 0) if self.equipped_armor else 0) + self.stats.get("Defense", 0)
+
 
         # Phase 1 - Regular enemies
         enemy_hp = 20 + self.level * 2
@@ -410,8 +469,8 @@ class Game:
             return
 
         # Victory rewards
-        loot = roll_loot_by_rarity()
-        bonus_loot = roll_loot_by_rarity()
+        loot = roll_loot_by_rarity_with_luck(self.stats.get("Luck", 0))
+        bonus_loot = roll_loot_by_rarity_with_luck(self.stats.get("Luck", 0))
         self.inventory.extend([loot, bonus_loot])
         self.collection_log.update([loot["id"], bonus_loot["id"]])
         self.coins += 10
@@ -422,6 +481,18 @@ class Game:
             self.xp -= self.xp_to_next
             self.level += 1
             self.xp_to_next = int(self.xp_to_next * 2.0)
+            self.stat_points += 3
+            self.log.config(text="🎉 Level Up! You gained 3 stat points.")
+            self.update_ui()
+
+
+        now = time.time()
+        if now < self.dungeon_cooldown:
+            remaining = int(self.dungeon_cooldown - now)
+            self.log.config(text=f"Dungeon cooldown! Wait {remaining}s.")
+            return
+        self.dungeon_cooldown = now + 10  # 10 second cooldown
+
 
         self.update_ui()
         self.save_game()
@@ -520,6 +591,8 @@ class Game:
             "hp": self.hp,
             "potions": self.potions,
             "first_roll_used": self.first_roll_used,
+            "stat_points": self.stat_points,
+            "stats": self.stats,
         }
         with open(SAVE_FILE, "w") as f:
             json.dump(data, f)
@@ -539,6 +612,8 @@ class Game:
                 self.hp = data.get("hp", 100)
                 self.potions = data.get("potions", 0)
                 self.first_roll_used = data.get("first_roll_used", False)
+                self.stat_points = data.get("stat_points", 0)
+                self.stats = data.get("stats", {"Strength": 0, "Defense": 0, "Luck": 0})
 
 
 if __name__ == "__main__":
